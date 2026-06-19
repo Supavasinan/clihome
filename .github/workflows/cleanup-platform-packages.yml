@@ -1,0 +1,34 @@
+name: cleanup-platform-packages
+
+# One-shot maintenance job: unpublish the legacy per-platform packages (replaced
+# by the single bundled clihome package in v0.3.0) and deprecate the launcher
+# versions that depended on them. Run manually from the Actions tab. Safe to
+# delete this workflow afterwards.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Unpublish legacy platform packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          for p in clihome-darwin-arm64 clihome-darwin-x64 clihome-linux-arm64 clihome-linux-x64 clihome-windows-x64; do
+            echo "unpublishing $p"
+            npm unpublish "$p" --force || echo "  (already gone or not unpublishable: $p)"
+          done
+
+      - name: Deprecate launcher versions that needed those packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm deprecate "clihome@<0.3.0" "Broken: relied on removed platform packages. Install clihome@latest (>=0.3.0)." \
+            || echo "  (deprecate skipped)"
