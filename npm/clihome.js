@@ -28,7 +28,7 @@ if (!pkg) {
   console.error(
     `clihome: unsupported platform "${key}".\n` +
       `Supported: ${Object.keys(PACKAGES).join(", ")}.\n` +
-      `Build from source instead: https://github.com/cchome/clihome`
+      `Build from source instead: https://github.com/Supavasinan/clihome`
   );
   process.exit(1);
 }

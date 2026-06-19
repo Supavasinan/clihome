@@ -46,11 +46,13 @@ tool** — safely, with a diff preview and backups.
 ## Other install methods
 
 ```bash
-go install github.com/cchome/clihome/cmd/clihome@latest   # via Go
+# from source (requires Go ≥ 1.24)
+git clone https://github.com/Supavasinan/clihome && cd clihome
+go build -o clihome ./cmd/clihome
 ```
 
 Full docs, sync semantics, and safety guarantees:
-**https://github.com/cchome/clihome**
+**https://github.com/Supavasinan/clihome**
 
 ## License
 

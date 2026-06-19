@@ -12,11 +12,11 @@
     "dotfiles",
     "ai"
   ],
-  "homepage": "https://github.com/cchome/clihome#readme",
-  "bugs": "https://github.com/cchome/clihome/issues",
+  "homepage": "https://github.com/Supavasinan/clihome#readme",
+  "bugs": "https://github.com/Supavasinan/clihome/issues",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cchome/clihome.git"
+    "url": "git+https://github.com/Supavasinan/clihome.git"
   },
   "license": "MIT",
   "bin": {
