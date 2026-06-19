@@ -9,8 +9,9 @@ Claude Code, Codex, … (`~/.claude*`, `~/.codex*`), one home per account.
 npm install -g clihome
 ```
 
-This pulls a small launcher plus the prebuilt native binary for your platform
-(macOS · Linux · Windows, arm64/x64). No Go toolchain required.
+A single package with prebuilt native binaries for every platform
+(macOS · Linux · Windows, arm64/x64) — a tiny launcher runs the right one. No Go
+toolchain required.
 
 Then:
 

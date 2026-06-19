@@ -1,9 +1,7 @@
 #!/usr/bin/env node
-// Build all npm artifacts for clihome:
-//   - one per-platform package (clihome-<os>-<arch>) holding a native Go binary
-//   - the launcher package (clihome) whose bin shim execs the right binary
-//
-// Output goes to npm/dist/. Run locally to smoke-test, or in CI before publish.
+// Build the single clihome npm package: one package bundling a native Go binary
+// for every supported platform under bin/<platform>-<arch>/, plus the launcher
+// shim that execs the right one. Output goes to npm/dist/clihome/.
 //
 //   node npm/build.mjs --version 1.2.3      # explicit version
 //   VERSION=1.2.3 node npm/build.mjs        # via env (leading "v" is stripped)
@@ -25,17 +23,14 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..");
 const distDir = join(here, "dist");
 
-// node platform/arch  <->  Go GOOS/GOARCH. Keep in sync with npm/clihome.js.
-// `pkg` overrides the published package name (the npm `os`/`cpu` fields still
-// use the node values, so resolution is unaffected). The Windows package is
-// named "windows" rather than "win32" because npm's spam filter rejects the
-// "win32" substring for new publishers.
+// node platform/arch (the bin/ subdir name)  <->  Go GOOS/GOARCH.
+// Keep the keys in sync with the SUPPORTED set in npm/clihome.js.
 const TARGETS = [
-  { os: "darwin", cpu: "arm64", goos: "darwin", goarch: "arm64" },
-  { os: "darwin", cpu: "x64", goos: "darwin", goarch: "amd64" },
-  { os: "linux", cpu: "arm64", goos: "linux", goarch: "arm64" },
-  { os: "linux", cpu: "x64", goos: "linux", goarch: "amd64" },
-  { os: "win32", cpu: "x64", goos: "windows", goarch: "amd64", pkg: "clihome-windows-x64" },
+  { key: "darwin-arm64", goos: "darwin", goarch: "arm64" },
+  { key: "darwin-x64", goos: "darwin", goarch: "amd64" },
+  { key: "linux-arm64", goos: "linux", goarch: "arm64" },
+  { key: "linux-x64", goos: "linux", goarch: "amd64" },
+  { key: "win32-x64", goos: "windows", goarch: "amd64" },
 ];
 
 function resolveVersion() {
@@ -44,32 +39,28 @@ function resolveVersion() {
     return process.argv[argIdx + 1].replace(/^v/, "");
   }
   if (process.env.VERSION) return process.env.VERSION.replace(/^v/, "");
-  const tmpl = JSON.parse(
-    readFileSync(join(here, "package.template.json"), "utf8")
-  );
-  return tmpl.version;
+  return JSON.parse(readFileSync(join(here, "package.template.json"), "utf8")).version;
 }
 
 const version = resolveVersion();
 const template = JSON.parse(
   readFileSync(join(here, "package.template.json"), "utf8")
 );
-const launcherName = template.name;
 
-console.log(`Building ${launcherName} v${version}`);
+console.log(`Building ${template.name} v${version} (single bundled package)`);
 rmSync(distDir, { recursive: true, force: true });
-mkdirSync(distDir, { recursive: true });
 
-const optionalDependencies = {};
+const pkgDir = join(distDir, template.name);
+const binDir = join(pkgDir, "bin");
+mkdirSync(binDir, { recursive: true });
 
 for (const t of TARGETS) {
-  const pkgName = t.pkg || `${launcherName}-${t.os}-${t.cpu}`;
-  const pkgDir = join(distDir, pkgName);
-  const binDir = join(pkgDir, "bin");
-  const binName = t.os === "win32" ? "clihome.exe" : "clihome";
-  mkdirSync(binDir, { recursive: true });
+  const isWin = t.goos === "windows";
+  const outDir = join(binDir, t.key);
+  mkdirSync(outDir, { recursive: true });
+  const out = join(outDir, isWin ? "clihome.exe" : "clihome");
 
-  process.stdout.write(`  ${t.goos}/${t.goarch} -> ${pkgName} … `);
+  process.stdout.write(`  ${t.goos}/${t.goarch} -> bin/${t.key} … `);
   execFileSync(
     "go",
     [
@@ -78,7 +69,7 @@ for (const t of TARGETS) {
       "-ldflags",
       `-s -w -X main.version=${version}`,
       "-o",
-      join(binDir, binName),
+      out,
       "./cmd/clihome",
     ],
     {
@@ -87,50 +78,18 @@ for (const t of TARGETS) {
       env: { ...process.env, GOOS: t.goos, GOARCH: t.goarch, CGO_ENABLED: "0" },
     }
   );
-  if (t.os !== "win32") chmodSync(join(binDir, binName), 0o755);
-
-  writeFileSync(
-    join(pkgDir, "package.json"),
-    JSON.stringify(
-      {
-        name: pkgName,
-        version,
-        description: `clihome native binary for ${t.os}-${t.cpu}.`,
-        repository: template.repository,
-        license: template.license,
-        os: [t.os],
-        cpu: [t.cpu],
-        files: ["bin"],
-        preferUnplugged: true,
-      },
-      null,
-      2
-    ) + "\n"
-  );
-  writeFileSync(
-    join(pkgDir, "README.md"),
-    `# ${pkgName}\n\nNative \`clihome\` binary for ${t.os}-${t.cpu}.\n` +
-      `This is an internal platform package — install [\`clihome\`](https://www.npmjs.com/package/clihome) instead.\n`
-  );
-  cpSync(join(repoRoot, "LICENSE"), join(pkgDir, "LICENSE"));
-
-  optionalDependencies[pkgName] = version;
+  if (!isWin) chmodSync(out, 0o755);
   console.log("ok");
 }
 
-// Launcher package.
-const launcherDir = join(distDir, launcherName);
-mkdirSync(join(launcherDir, "bin"), { recursive: true });
+// Single package manifest from the template (no os/cpu, no platform deps).
+const pkg = { ...template, version };
+delete pkg.optionalDependencies;
+writeFileSync(join(pkgDir, "package.json"), JSON.stringify(pkg, null, 2) + "\n");
 
-const launcherPkg = { ...template, version, optionalDependencies };
-writeFileSync(
-  join(launcherDir, "package.json"),
-  JSON.stringify(launcherPkg, null, 2) + "\n"
-);
-cpSync(join(here, "clihome.js"), join(launcherDir, "bin", "clihome.js"));
-chmodSync(join(launcherDir, "bin", "clihome.js"), 0o755);
-cpSync(join(here, "README.md"), join(launcherDir, "README.md"));
-cpSync(join(repoRoot, "LICENSE"), join(launcherDir, "LICENSE"));
+cpSync(join(here, "clihome.js"), join(binDir, "clihome.js"));
+chmodSync(join(binDir, "clihome.js"), 0o755);
+cpSync(join(here, "README.md"), join(pkgDir, "README.md"));
+cpSync(join(repoRoot, "LICENSE"), join(pkgDir, "LICENSE"));
 
-console.log(`\nDone. Artifacts in ${distDir}`);
-console.log(`Publish order: platform packages first, then ${launcherName}.`);
+console.log(`\nDone. Package in ${pkgDir}`);

@@ -32,35 +32,24 @@ jobs:
       - name: Build packages
         run: node npm/build.mjs --version "${GITHUB_REF_NAME#v}"
 
-      - name: Publish packages
+      - name: Publish package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          publish_one() {
-            dir="$1"
-            name=$(node -p "require('./$dir/package.json').name")
-            ver=$(node -p "require('./$dir/package.json').version")
-            if npm view "$name@$ver" version >/dev/null 2>&1; then
-              echo "✓ skip $name@$ver (already published)"
-              return 0
+          dir="npm/dist/clihome"
+          ver=$(node -p "require('./$dir/package.json').version")
+          if npm view "clihome@$ver" version >/dev/null 2>&1; then
+            echo "✓ clihome@$ver already published; nothing to do"
+            exit 0
+          fi
+          # Retry with backoff in case the registry transiently rejects the publish.
+          for attempt in 1 2 3 4 5; do
+            if npm publish "$dir" --access public --provenance; then
+              echo "✓ published clihome@$ver"
+              exit 0
             fi
-            # Retry: a new publisher pushing several packages quickly can trip
-            # npm's spam/rate heuristic (403). Back off and try again.
-            for attempt in 1 2 3 4 5; do
-              if npm publish "$dir" --access public --provenance; then
-                echo "✓ published $name@$ver"
-                return 0
-              fi
-              echo "publish $name failed (attempt $attempt/5); backing off…"
-              sleep 30
-            done
-            echo "✗ gave up on $name@$ver"
-            return 1
-          }
-          # Platform packages first (launcher's optionalDependencies must resolve),
-          # spaced out to avoid tripping spam detection; launcher last.
-          for dir in npm/dist/clihome-*/; do
-            publish_one "$dir"
-            sleep 10
+            echo "publish failed (attempt $attempt/5); backing off…"
+            sleep 30
           done
-          publish_one "npm/dist/clihome/"
+          echo "✗ gave up publishing clihome@$ver"
+          exit 1
