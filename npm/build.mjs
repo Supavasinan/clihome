@@ -26,12 +26,16 @@ const repoRoot = join(here, "..");
 const distDir = join(here, "dist");
 
 // node platform/arch  <->  Go GOOS/GOARCH. Keep in sync with npm/clihome.js.
+// `pkg` overrides the published package name (the npm `os`/`cpu` fields still
+// use the node values, so resolution is unaffected). The Windows package is
+// named "windows" rather than "win32" because npm's spam filter rejects the
+// "win32" substring for new publishers.
 const TARGETS = [
   { os: "darwin", cpu: "arm64", goos: "darwin", goarch: "arm64" },
   { os: "darwin", cpu: "x64", goos: "darwin", goarch: "amd64" },
   { os: "linux", cpu: "arm64", goos: "linux", goarch: "arm64" },
   { os: "linux", cpu: "x64", goos: "linux", goarch: "amd64" },
-  { os: "win32", cpu: "x64", goos: "windows", goarch: "amd64" },
+  { os: "win32", cpu: "x64", goos: "windows", goarch: "amd64", pkg: "clihome-windows-x64" },
 ];
 
 function resolveVersion() {
@@ -59,7 +63,7 @@ mkdirSync(distDir, { recursive: true });
 const optionalDependencies = {};
 
 for (const t of TARGETS) {
-  const pkgName = `${launcherName}-${t.os}-${t.cpu}`;
+  const pkgName = t.pkg || `${launcherName}-${t.os}-${t.cpu}`;
   const pkgDir = join(distDir, pkgName);
   const binDir = join(pkgDir, "bin");
   const binName = t.os === "win32" ? "clihome.exe" : "clihome";

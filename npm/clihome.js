@@ -18,7 +18,7 @@ const PACKAGES = {
   "darwin-x64": "clihome-darwin-x64",
   "linux-arm64": "clihome-linux-arm64",
   "linux-x64": "clihome-linux-x64",
-  "win32-x64": "clihome-win32-x64",
+  "win32-x64": "clihome-windows-x64",
 };
 
 const key = `${process.platform}-${process.arch}`;
