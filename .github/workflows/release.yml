@@ -32,16 +32,35 @@ jobs:
       - name: Build packages
         run: node npm/build.mjs --version "${GITHUB_REF_NAME#v}"
 
-      - name: Publish platform packages
+      - name: Publish packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
+          publish_one() {
+            dir="$1"
+            name=$(node -p "require('./$dir/package.json').name")
+            ver=$(node -p "require('./$dir/package.json').version")
+            if npm view "$name@$ver" version >/dev/null 2>&1; then
+              echo "✓ skip $name@$ver (already published)"
+              return 0
+            fi
+            # Retry: a new publisher pushing several packages quickly can trip
+            # npm's spam/rate heuristic (403). Back off and try again.
+            for attempt in 1 2 3 4 5; do
+              if npm publish "$dir" --access public --provenance; then
+                echo "✓ published $name@$ver"
+                return 0
+              fi
+              echo "publish $name failed (attempt $attempt/5); backing off…"
+              sleep 30
+            done
+            echo "✗ gave up on $name@$ver"
+            return 1
+          }
+          # Platform packages first (launcher's optionalDependencies must resolve),
+          # spaced out to avoid tripping spam detection; launcher last.
           for dir in npm/dist/clihome-*/; do
-            echo "publishing $dir"
-            npm publish "$dir" --access public --provenance
+            publish_one "$dir"
+            sleep 10
           done
-
-      - name: Publish launcher
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish npm/dist/clihome --access public --provenance
+          publish_one "npm/dist/clihome/"
