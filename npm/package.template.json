@@ -1,0 +1,32 @@
+{
+  "name": "clihome",
+  "version": "0.0.0",
+  "description": "List, inspect, create, and sync the config homes of AI coding CLIs (Claude Code, Codex, …) — one home per account.",
+  "keywords": [
+    "cli",
+    "claude",
+    "claude-code",
+    "codex",
+    "tui",
+    "config",
+    "dotfiles",
+    "ai"
+  ],
+  "homepage": "https://github.com/cchome/clihome#readme",
+  "bugs": "https://github.com/cchome/clihome/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cchome/clihome.git"
+  },
+  "license": "MIT",
+  "bin": {
+    "clihome": "bin/clihome.js"
+  },
+  "files": [
+    "bin"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "optionalDependencies": {}
+}
