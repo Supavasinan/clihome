@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"clihome/internal/ui"
+	"clihome/internal/update"
 )
 
 // githubURL is the maintainer's GitHub, shown on the preferences "About" panel.
@@ -195,8 +196,13 @@ func (m Model) prefsView() string {
 	b.WriteString(row(0, "Theme", paletteOpts, m.prefs.Palette, m.prefCur == 0) + "\n")
 	b.WriteString(row(1, "Activity range", wlabels, weeksLabel[m.prefs.Weeks], m.prefCur == 1))
 
-	// About — non-interactive, with the maintainer's GitHub.
+	// About — non-interactive: version, any pending update, and the GitHub link.
 	b.WriteString("\n" + ui.Dim.Render(strings.Repeat("─", 30)) + "\n\n")
+	b.WriteString("  " + ui.Dim.Render(ui.Pad("Version", 16)) + " " + ui.Cream.Render(ui.VersionLabel()) + "\n")
+	if m.updLatest != "" {
+		b.WriteString("  " + ui.Dim.Render(ui.Pad("Update", 16)) + " " +
+			ui.Yellow.Render("v"+m.updLatest+" available") + "  " + ui.Dim.Render(update.UpgradeCmd) + "\n")
+	}
 	b.WriteString("  " + ui.Dim.Render(ui.Pad("GitHub", 16)) + " " + ui.Cyan.Render(githubURL) + "\n")
 
 	body := ui.Pane("preferences", b.String(), max(m.w-7, 40), max(m.h-6, 8)-2)

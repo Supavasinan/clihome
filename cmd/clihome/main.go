@@ -13,6 +13,7 @@ import (
 	"clihome/internal/home"
 	"clihome/internal/tui"
 	"clihome/internal/ui"
+	"clihome/internal/update"
 )
 
 // version is the release version, injected at build time via
@@ -20,6 +21,8 @@ import (
 var version = "dev"
 
 func main() {
+	ui.SetVersion(version)
+
 	args := os.Args[1:]
 	cmd := ""
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
@@ -29,7 +32,7 @@ func main() {
 	case "list", "ls":
 		cmdList()
 	case "version", "--version", "-v":
-		fmt.Println("clihome " + version)
+		cmdVersion()
 	case "":
 		runTUI()
 	case "help", "-h", "--help":
@@ -55,6 +58,9 @@ func cmdList() {
 	homes := home.Discover()
 	if len(homes) == 0 {
 		fmt.Printf("   %s\n\n", ui.Dim.Render("no AI CLI homes found"))
+		if n := updateBanner(); n != "" {
+			fmt.Printf("%s\n\n", n)
+		}
 		return
 	}
 	rows, w := ui.Rows(homes)
@@ -84,6 +90,35 @@ func cmdList() {
 	fmt.Printf("\n   %s  %s  %s %s\n\n",
 		ui.Dim.Render(fmt.Sprintf("%d homes", len(homes))), ui.Dim.Render("·"),
 		ui.Dim.Render("details:"), ui.Clay.Render("clihome info <name>"))
+	if n := updateBanner(); n != "" {
+		fmt.Printf("%s\n\n", n)
+	}
+}
+
+// cmdVersion prints the running version and, when a newer release exists, the
+// upgrade command. This is the one command that does a live (cached, bounded)
+// network check; everything else reads the cache only.
+func cmdVersion() {
+	fmt.Println("clihome " + version)
+	if latest, newer := update.Check(version); newer {
+		fmt.Printf("  %s\n  %s %s\n",
+			ui.Yellow.Render("v"+latest+" available"),
+			ui.Dim.Render("update:"),
+			ui.Clay.Render(update.UpgradeCmd))
+	}
+}
+
+// updateBanner returns a one-line "update available" notice from the cached
+// check (no network), or "" when up to date or unknown.
+func updateBanner() string {
+	latest, newer := update.Cached(version)
+	if !newer {
+		return ""
+	}
+	return fmt.Sprintf("   %s  %s  %s",
+		ui.Yellow.Render("↑ clihome v"+latest+" available"),
+		ui.Dim.Render("·"),
+		ui.Clay.Render(update.UpgradeCmd))
 }
 
 func printHelp() {
