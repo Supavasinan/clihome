@@ -39,6 +39,8 @@ type Model struct {
 	nav    []string // screen back-stack: esc pops one level instead of jumping home
 	status string   // transient result line in the footer
 
+	updLatest string // newer release available (from the background check), "" if none
+
 	prefs      prefs // user preferences (heatmap palette, activity range)
 	prefCur    int   // selected preference field
 	newCur     int   // selected provider in the new-home picker
@@ -135,7 +137,7 @@ func New() Model {
 	return m
 }
 
-func (m Model) Init() tea.Cmd { return nil }
+func (m Model) Init() tea.Cmd { return checkUpdate() }
 
 // ── async fetches ─────────────────────────────────────────────────────────────
 
@@ -203,6 +205,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case sessMsg:
 		m.sessions[msg.home] = sessState{s: msg.s, err: msg.err}
+		return m, nil
+	case updateMsg:
+		m.updLatest = msg.latest
 		return m, nil
 	case tea.MouseMsg:
 		// Recompute every screen's hover targets from the mouse position so the
@@ -484,7 +489,10 @@ func (m Model) header() string {
 	crumb := m.breadcrumb()
 	switch m.mode {
 	case "browse":
-		crumb += "  " + ui.Dim.Render("·  AI CLI config home manager")
+		crumb += "  " + ui.Dim.Render("·  "+ui.VersionLabel())
+		if m.updLatest != "" {
+			crumb += "  " + ui.Dim.Render("·") + "  " + ui.Yellow.Render("update → v"+m.updLatest)
+		}
 	case "sync":
 		crumb += "   " + ui.Dim.Render(m.procSrc+" → "+m.procDst)
 	}

@@ -35,12 +35,33 @@ func SetAccent(hex string) {
 	Bar = lipgloss.NewStyle().Background(lipgloss.Color(hex)).Foreground(lipgloss.Color("#1C1613")).Bold(true)
 }
 
-// Banner renders the slim brand header.
+// Version is the running release ("dev" for local builds), set once at startup
+// via SetVersion. Shared by the banner, the cockpit header, and the About panel.
+var Version = "dev"
+
+// SetVersion records the running release for display.
+func SetVersion(v string) {
+	if v != "" {
+		Version = v
+	}
+}
+
+// VersionLabel formats the running version for display: "v0.1.0" for releases,
+// plain "dev" for local builds (so it never reads "vdev").
+func VersionLabel() string {
+	if Version == "" || Version == "dev" {
+		return "dev"
+	}
+	return "v" + Version
+}
+
+// Banner renders the slim brand header, including the running version.
 func Banner(sub string) string {
 	if sub == "" {
 		sub = "AI CLI config home manager"
 	}
-	head := "  " + Clay.Render("◆") + " " + Clay.Bold(true).Render("clihome") + "  " + Dim.Render("·") + "  " + Dim.Render(sub)
+	head := "  " + Clay.Render("◆") + " " + Clay.Bold(true).Render("clihome") +
+		" " + Dim.Render(VersionLabel()) + "  " + Dim.Render("·") + "  " + Dim.Render(sub)
 	return "\n" + head + "\n  " + Dim.Render(strings.Repeat("─", 52)) + "\n"
 }
 
